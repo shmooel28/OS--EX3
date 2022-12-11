@@ -29,12 +29,9 @@ int checkSumValid(char *str, int checksum)
     return ans;
 
 }
+int create_file(FILE* f1 , char* str){
 
-int main()
-{
-    FILE *f1;
-    f1 = fopen("test.txt","w+");
-    char *str = malloc(100000000);
+    
     if(!str)
     {
         perror("cant creat 100mb\n");
@@ -48,12 +45,21 @@ int main()
     }
     printf("size of str = %ld\n",sizeof(str));
     fprintf(f1,"%s",str);
+
+}
+int main()
+{
+    char *str = malloc(100000000);
+    FILE *f1;
+    f1 = fopen("test.txt","w+");
+
     int senderChecksum = checkSum(str);
     printf("the check sum is: %d\n",senderChecksum);
     pid_t pid1, pid2;
     pid1 = fork();
     if (pid1 == 0)
     {
+        sleep(1);
         clock_t start, end;
         start = clock();
         printf("process 1 progres\n");
@@ -63,18 +69,7 @@ int main()
     }
     else
     {
-        pid2 = fork();
-        if(pid2 == 0)
-        {
-            clock_t start, end;
-            start = clock();
-            printf("process 2 progres\n");
-            end = clock();
-            printf("the time take is: %f\n", ((double)(end-start))/CLOCKS_PER_SEC);
-        }
-        else{
-            printf("parent progress\n");
-        }
+        
     }
     fclose(f1);
     
