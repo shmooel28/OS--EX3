@@ -102,6 +102,9 @@ int main()
     int pid1 = fork();
     if(pid1 <0){return 1;}
     if(pid1 ==0){
+
+        /// @brief The client side - Its start the sockeand send the file to the server. 
+        /// 
         char *ip = "127.0.0.1";
         int port = 8080;
         int e;
@@ -143,8 +146,8 @@ int main()
         return 0;
     }
     else{
-
-        clock_t start, end;
+        /// @brief  The server socket (its get the end when the file is comming and created)
+        /// 
         char *ip = "127.0.0.1";
         int port = 8080;
         int e;
@@ -188,11 +191,12 @@ int main()
         new_sock = accept(sockfd,(struct sockaddr*)&new_addr, &addr_size);
 
         write_file(new_sock);
-        end = clock();
+
         //printf("TCP IPV4 socket: %ld", clock());
         //printf("[+]Data written in the text file ");
-        print_time("TCP IPV4 socket end");
         wait(NULL);
+        print_time("TCP IPV4 socket end");
+        free(str);
         return 0;
         }
      
