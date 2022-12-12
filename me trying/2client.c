@@ -20,7 +20,7 @@ int create_file(FILE* f1 , char* str){
         str[i] =  rnd;
     }
     //printf("size of str = %ld\n",sizeof(str));
-    fprintf(f1,"%s",str);
+    //fprintf(f1,"%s",str);
 
 }
 
