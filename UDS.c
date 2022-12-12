@@ -25,7 +25,21 @@ int create_file(FILE* f1 , char* str){
     fprintf(f1,"%s",str);
 
 }
+int print_time(char* str){
+    int hours, minutes, seconds, day, month, year;
+    time_t now;
 
+
+    struct tm *local = localtime(&now);
+    hours = local->tm_hour;
+    minutes = local->tm_min;
+    seconds = local->tm_sec;
+
+    printf("%s:" ,str);
+    time(&now);
+    printf(" %s\n", ctime(&now));
+    return 1;
+}
 int main()
 {
     char *str = malloc(100000000);
@@ -79,6 +93,7 @@ int main()
         FILE * fp = fopen("file1.txt", "r");
         if (ok) {
             char c ;
+            print_time("USD start");
             while((c = fgetc(fp))){
                 send(fd, &c, 1, 0);
                 if(c == EOF || c == '\0'){break;}
@@ -131,6 +146,8 @@ int main()
                 fwrite(buff, 1 , sizeof(char) , fp );
                 //ret = sendto(fd, buff, strlen(buff)+1, 0, (struct sockaddr *)&from, fromlen);
             }
+
+            print_time("USD End");
             close(fp);
         }
 
