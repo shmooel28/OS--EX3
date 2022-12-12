@@ -3,6 +3,7 @@
     "files.associations": {
         "stdio.h": "c",
         "ipc.h": "c",
-        "un.h": "c"
+        "un.h": "c",
+        "stdlib.h": "c"
     }
 }
