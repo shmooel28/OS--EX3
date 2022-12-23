@@ -6,10 +6,19 @@
 #include <time.h>
 #include<sys/wait.h>
 
+#define DATA_SIZE 100000000
 #define SIZE 1024
 #define TICK(X) clock_t X = clock()
 #define TOCK(X) printf("time %s: %g sec.\n", (#X), (double)(clock() - (X)) / CLOCKS_PER_SEC)
 
+unsigned int checksum(FILE* fp){
+    unsigned char checksum = 0;
+    while (!feof(fp) && !ferror(fp)) {
+    checksum ^= fgetc(fp);
+    }
+    fclose(fp);
+    return checksum;
+}
 
 void send_file(FILE *fp, int sockfd)
 {
@@ -55,25 +64,6 @@ void write_file(int sockfd)
     
 }
 
-int create_file(FILE* f1 , char* str){
-
-    
-    if(!str)
-    {
-        perror("cant creat 100mb\n");
-        exit(1);
-    }
-    srand(time(NULL));
-    for (size_t i = 0; i < 100000000/sizeof(char); i++)
-    {
-        char rnd = '0'+(random()%2);
-        str[i] =  rnd;
-    }
-    //printf("size of str = %ld\n",sizeof(str));
-    fprintf(f1,"%s",str);
-
-}
-
 int print_time(char* str){
     int hours, minutes, seconds, day, month, year;
     time_t now;
@@ -89,16 +79,11 @@ int print_time(char* str){
     printf(" %s\n", ctime(&now));
     return 1;
 }
+
 int main()
 {
-    char *str = malloc(100000000);
-    FILE *f1;
-    f1 = fopen("file1.txt","w+");
-    create_file(f1, str);
-
-    fclose(f1);
-
-
+    FILE* f1 = fopen("file1.txt" , "r");
+    unsigned int chcksum = checksum(f1);
     int pid1 = fork();
     if(pid1 <0){return 1;}
     if(pid1 ==0){
@@ -138,7 +123,7 @@ int main()
             perror("[-]Error in reading file.");
             exit(1);
         }
-        print_time("TCP IPV4 socket start");
+        print_time("TCP/IPv4 Socket start");
         send_file(fp,sockfd);
         //printf("[+] File data send successfully. \n");
         close(sockfd);
@@ -187,7 +172,7 @@ int main()
             perror("[-]Error in Binding");
             exit(1);
         }
-        addr_size = sizeof(new_addr);
+        addr_size = DATA_SIZE;
         new_sock = accept(sockfd,(struct sockaddr*)&new_addr, &addr_size);
 
         write_file(new_sock);
@@ -195,8 +180,17 @@ int main()
         //printf("TCP IPV4 socket: %ld", clock());
         //printf("[+]Data written in the text file ");
         wait(NULL);
-        print_time("TCP IPV4 socket end");
-        free(str);
+
+        FILE* f2 = fopen("file2.txt", "r");
+        if( chcksum == checksum(f2)){
+            print_time("TCP/IPv4 Socket end");
+        }
+        else{
+            printf("TCP/IPv4 Socket end: -1 ");
+        }
+
+
+        
         return 0;
         }
      

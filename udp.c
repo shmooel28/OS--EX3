@@ -13,23 +13,15 @@
 #define PORT 5566
 #define DATA_SIZE 100000000
 
-int create_file(FILE* f1 , char* str){
-
-    
-    if(!str)
-    {
-        perror("cant creat 100mb\n");
-        exit(1);
+unsigned int checksum(FILE* fp){
+    unsigned char checksum = 0;
+    while (!feof(fp) && !ferror(fp)) {
+    checksum ^= fgetc(fp);
     }
-    srand(time(NULL));
-    for (size_t i = 0; i < DATA_SIZE; i++)
-    {
-        char rnd = '0'+(random()%2);
-        str[i] =  rnd;
-    }
-    fprintf(f1,"%s",str);
-
+    fclose(fp);
+    return checksum;
 }
+
 int print_time(char* str){
     int hours, minutes, seconds, day, month, year;
     time_t now;
@@ -48,14 +40,8 @@ int print_time(char* str){
 
 int main()
 {
-
-    char *str = malloc(DATA_SIZE);
-    FILE *f1;
-    f1 = fopen("file1.txt","w+");
-    create_file(f1, str);
-
-    fclose(f1);
-    free(str);
+    FILE* f1 = fopen("file1.txt" , "r");
+    unsigned int chcksum = checksum(f1);
     int pid1 = fork();
     if(pid1 ==0 ){
         sleep(1);
@@ -92,7 +78,7 @@ int main()
 
             char c;
             FILE* fp = fopen("file1.txt", "r");
-            print_time("UDP IPV6 start");
+            print_time("UDP/IPv6 Socket");
             while((c = fgetc(fp)) ){
                 if (sendto(sock, &c, 1, 0,
                     (struct sockaddr *)psinfo->ai_addr, sin6len) == -1){
@@ -143,11 +129,21 @@ int main()
                         if( buffer[0] == EOF){break;}
                         fwrite(&buffer[0],1, sizeof(char), fp);
                     }
-            print_time("UDP IPV6 End");
+
+
+            
             fclose(fp);
             shutdown(sock, 2);
             close(sock);
             wait(NULL);
+            FILE* f2 = fopen("file2.txt", "r");
+            if( chcksum == checksum(f2)){
+                print_time("UDP/IPv6 Socket end");
+            }
+            else{
+                printf("UDP/IPv6 Socket end: -1 ");
+            }
+
             return 0;
     }
 }

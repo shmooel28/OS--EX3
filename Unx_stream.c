@@ -3,37 +3,40 @@
  #include <sys/un.h>
  #include <stdio.h>
  #include <stdlib.h>
+ #include <time.h>
  #define NAME "socket"
  #define DATA_SIZE 100000000
- int create_file(FILE* f1 , char* str){
 
-    
-    if(!str)
-    {
-        perror("cant creat 100mb\n");
-        exit(1);
-    }
-    srand(time(NULL));
-    for (size_t i = 0; i < DATA_SIZE; i++)
-    {
-        char rnd = '0'+(random()%2);
-        str[i] =  rnd;
-    }
-    //printf("size of str = %ld\n",sizeof(str));
-    fprintf(f1,"%s",str);
+int print_time(char* str){
+    int hours, minutes, seconds, day, month, year;
+    time_t now;
 
+
+    struct tm *local = localtime(&now);
+    hours = local->tm_hour;
+    minutes = local->tm_min;
+    seconds = local->tm_sec;
+
+    printf("%s:" ,str);
+    time(&now);
+    printf(" %s\n", ctime(&now));
+    return 1;
+}
+
+
+
+unsigned int checksum(FILE* fp){
+    unsigned char checksum = 0;
+    while (!feof(fp) && !ferror(fp)) {
+    checksum ^= fgetc(fp);
+    }
+    fclose(fp);
+    return checksum;
 }
  int main()
  {
-
-	char *str = malloc(DATA_SIZE);
-    FILE *f1;
-    f1 = fopen("file1.txt","w+");
-    create_file(f1, str);
-
-    fclose(f1);
-    free(str);
-
+	FILE * f1 = fopen("file1.txt", "r");
+	unsigned int chksum = checksum(f1);
 	int pid1 = fork();
 
 		if(pid1 == 0){
@@ -55,6 +58,7 @@
 			}
 			FILE* fp = fopen("file1.txt", "r");
 			char c;
+			print_time("UDS - Stream socket start:")
 			while(c = fgetc(fp)){
 				if (write(sock, &c, 1) < 0){
 					perror("writing on stream socket");
@@ -109,6 +113,13 @@
 				fclose(fp);
 				close(sock);
 				unlink(NAME);
+				FILE * f2 = fopen("file2.txt", "r");
+				if(chksum == checksum(f2)){
+					print_time("UDS - Stream socket end:")
+				}
+				else{
+					printf("UDS - Stream socket end: -1");
+				}
 				return 0;
-					}
+		}
 	}

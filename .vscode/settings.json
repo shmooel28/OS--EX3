@@ -4,6 +4,8 @@
         "stdio.h": "c",
         "ipc.h": "c",
         "un.h": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "socket.h": "c",
+        "unistd.h": "c"
     }
 }

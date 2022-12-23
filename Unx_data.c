@@ -43,14 +43,8 @@ int print_time(char* str){
 }
 int main()
 {
-    char *str = malloc(DATA_SIZE);
-    FILE *f1;
-    f1 = fopen("file1.txt","w+");
-    create_file(f1, str);
-
-    fclose(f1);
-    free(str);
-
+    FILE* f1 = fopen("file1.txt", "r");
+    unsigned int chcksm = checksum(f1);
 
     int pid1 = fork();
     if(pid1 <0){return 1;}
@@ -94,7 +88,7 @@ int main()
         FILE * fp = fopen("file1.txt", "r");
         if (ok) {
             char c ;
-            print_time("USD start");
+            print_time("UDS - Dgram socket start:");
             while((c = fgetc(fp))){
                 send(fd, &c, 1, 0);
                 if(c == EOF || c == '\0'){break;}
@@ -158,6 +152,14 @@ int main()
         }
 
         wait(NULL);
+
+        FILE * f2 = fopen("file2.txt", "r");
+        if(chksum == checksum(f2)){
+            print_time("UDS - Dgram socket end:")
+        }
+        else{
+            printf("UDS - Dgram socket end: -1");
+        }
         return 0;
     }
 }
