@@ -1,31 +1,29 @@
+#define _GNU_SOURCE
 #include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <string.h>
+#include <time.h>
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <stdlib.h>
 #include <unistd.h>
-#include <time.h>
-#include<sys/wait.h>
-#include "ipc.h"
+#include <sys/wait.h>
+
+#define SOCK_PATH_SERVER "unix-dgram-server.temp"
+#define SOCK_PATH_CLIENT "unix-dgram-client.temp"
+
 #define DATA_SIZE 100000000
 
-int create_file(FILE* f1 , char* str){
-
-    
-    if(!str)
-    {
-        perror("cant creat 100mb\n");
-        exit(1);
+unsigned int checksum(FILE* fp){
+    unsigned char checksum = 0;
+    while (!feof(fp) && !ferror(fp)) {
+    checksum ^= fgetc(fp);
     }
-    srand(time(NULL));
-    for (size_t i = 0; i < DATA_SIZE; i++)
-    {
-        char rnd = '0'+(random()%2);
-        str[i] =  rnd;
-    }
-    //printf("size of str = %ld\n",sizeof(str));
-    fprintf(f1,"%s",str);
-
+    fclose(fp);
+    return checksum;
 }
+
 int print_time(char* str){
     int hours, minutes, seconds, day, month, year;
     time_t now;
@@ -41,125 +39,189 @@ int print_time(char* str){
     printf(" %s\n", ctime(&now));
     return 1;
 }
+
+
 int main()
 {
-    FILE* f1 = fopen("file1.txt", "r");
-    unsigned int chcksm = checksum(f1);
 
     int pid1 = fork();
     if(pid1 <0){return 1;}
     if(pid1 ==0){
-        // client side
-        sleep(1);
-        int fd;
-        struct sockaddr_un addr;
-        int ret;
-        char buff[8192] = {EOF};
-        struct sockaddr_un from;
-        int ok = 1;
-        int len;
+		sleep(0.005);
+		struct sockaddr_un remote;
 
-        if ((fd = socket(PF_UNIX, SOCK_DGRAM, 0)) < 0) {
-            perror("socket");
-            ok = 0;
-        }
+	// Create a socket - the only information is the type of socket we
+	// want to create, not the address we want to connect to.
+	int s;
+	if ((s = socket(AF_UNIX, SOCK_DGRAM, 0)) == -1) {
+		perror("socket");
+		exit(EXIT_FAILURE);
+	}
 
-        if (ok) {
-            memset(&addr, 0, sizeof(addr));
-            addr.sun_family = AF_UNIX;
-            strcpy(addr.sun_path, CLIENT_SOCK_FILE);
-            unlink(CLIENT_SOCK_FILE);
-            if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-                perror("bind");
-                ok = 0;
-            }
-        }
+#if 0
+	// If we also wanted to receive datagrams, we would need to call
+	// bind().
+	struct sockaddr_un local;
+	local.sun_family = AF_UNIX;
+	strcpy(local.sun_path, SOCK_PATH_CLIENT);
+	unlink(local.sun_path);
 
-        if (ok) {
-            memset(&addr, 0, sizeof(addr));
-            addr.sun_family = AF_UNIX;
-            strcpy(addr.sun_path, SERVER_SOCK_FILE);
-            if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
-                perror("connect");
-                ok = 0;
-            }
-        }
+	int len = strlen(local.sun_path) + sizeof(local.sun_family);
+	if (bind(s, (struct sockaddr *)&local, len) == -1)
+	{
+		perror("bind");
+		exit(EXIT_FAILURE);
+	}
+#endif
 
-        FILE * fp = fopen("file1.txt", "r");
-        if (ok) {
-            char c ;
-            print_time("UDS - Dgram socket start:");
-            while((c = fgetc(fp))){
-                send(fd, &c, 1, 0);
-                if(c == EOF || c == '\0'){break;}
-            }
-            close(fp);
-            //while (send(fd, &buff[i++], 1, 0) > 0 && buff[i-1]!='\0') {}
-        }
-
-        if (fd >= 0) {
-            close(fd);
-        }
-
-        unlink (CLIENT_SOCK_FILE);
-        return 0;
-
-    }
-    else{
-        // server side
-
-        int fd;
-        struct sockaddr_un addr;
-        int ret;
-        char buff[8192] = {'\0'};
-        struct sockaddr_un from;
-        int ok = 1;
-        int len;
-        socklen_t fromlen = sizeof(from);
-
-        if ((fd = socket(PF_UNIX, SOCK_DGRAM, 0)) < 0) {
-            perror("socket");
-            ok = 0;
-        }
-
-        if (ok) {
-            memset(&addr, 0, sizeof(addr));
-            addr.sun_family = AF_UNIX;
-            strcpy(addr.sun_path, SERVER_SOCK_FILE);
-            unlink(SERVER_SOCK_FILE);
-            if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-                perror("bind");
-                ok = 0;
-            }
-        }
-        if(ok){
-            FILE * fp = 0;
-            while ((len = recvfrom(fd, buff, 1, 0, (struct sockaddr *)&from, &fromlen)) > 0  && buff[0] != EOF) {
-                if(fp == 0){
-                    fp = fopen("file2.txt" , "w+");
-                }
-                fwrite(buff, 1 , sizeof(char) , fp );
-                //ret = sendto(fd, buff, strlen(buff)+1, 0, (struct sockaddr *)&from, fromlen);
-            }
-
-            print_time("USD End");
-            close(fp);
-        }
+	// What address are we sending the packets to?
+	remote.sun_family = AF_UNIX;
+	strcpy(remote.sun_path, SOCK_PATH_SERVER);
 
 
-        if (fd >= 0) {
-            close(fd);
-        }
+	// Use send() and recv() to send and receive information on the
+	// socket. Note that send(?, ?, ?, 0) is equivalent to write(?, ?,
+	// ?). Similarly, recv(?, ?, ?, 0) is the same as read(?, ?, ?).
+	//
+	// Print a prompt, read a line of text that the user types in.
+	char str[100];
+	FILE* fp = fopen("file1.txt", "r");
+	print_time("UDS - Dgram socket start");
+	while(fgets(str, 100, fp))
+	{
+		if (sendto(s, str, strlen(str), 0,
+				   (struct sockaddr*) (&remote),
+				   (socklen_t) sizeof(struct sockaddr_un)) == -1)
+		{
+			perror("sendto");
+			exit(EXIT_FAILURE);
+		}
+		//printf("sent %zu bytes\n", strlen(str));
 
-        wait(NULL);
+		if(feof(fp)){
+			str[0] = EOF;
+			if (sendto(s, str, 1, 0,
+				   (struct sockaddr*) (&remote),
+				   (socklen_t) sizeof(struct sockaddr_un)) == -1)
+				   	{
+						perror("sendto");
+						exit(EXIT_FAILURE);
+					}
 
-        FILE * f2 = fopen("file2.txt", "r");
-        if(chksum == checksum(f2)){
-            print_time("UDS - Dgram socket end:")
-        }
-        else{
-            printf("UDS - Dgram socket end: -1");
-        }
-        return 0;
-    }
+			break;
+		}
+
+	}
+	fclose(fp);
+
+	close(s);
+
+	return EXIT_SUCCESS;
+
+	}
+	else{
+	struct sockaddr_un remote;
+
+	/*
+	  A call to socket() with the proper arguments creates the Unix
+	  socket.
+	  The second argument, SOCK_DGRAM, tells socket() a datagram
+	  socket. The number of read() or recv() must match the number of
+	  send() or write(). If you read with a size smaller than the size
+	  of the packet, you won't receive the entire message.
+	  One more note: all these calls return -1 on error and set the
+	  global variable errno to reflect whatever went wrong. Be sure to
+	  do your error checking.
+	*/
+	int s = socket(AF_UNIX, SOCK_DGRAM, 0);
+	if (s == -1)
+	{
+		perror("socket");
+		exit(EXIT_FAILURE);
+	}
+
+	/*
+	  You got a socket descriptor from the call to socket(), now you
+	  want to bind that to an address in the Unix domain. (That
+	  address, is a special file on disk.)
+	  This associates the socket descriptor "s" with the Unix socket
+	  address "/home/beej/mysocket". Notice that we called unlink()
+	  before bind() to remove the socket if it already exists. You
+	  will get an EINVAL error if the file is already there.
+	*/
+	struct sockaddr_un local;
+	local.sun_family = AF_UNIX;
+	strcpy(local.sun_path, SOCK_PATH_SERVER);
+	unlink(local.sun_path);
+	int len = strlen(local.sun_path) + sizeof(local.sun_family);
+	if (bind(s, (struct sockaddr *)&local, len) == -1)
+	{
+		perror("bind");
+		exit(EXIT_FAILURE);
+	}
+
+#if 0
+	// If we wanted to send packets back to the client, we would need
+	// this code.
+	
+	// What address are we sending the packets to?
+	remote.sun_family = AF_UNIX;
+	strcpy(remote.sun_path, SOCK_PATH_CLIENT);
+#endif
+
+	// Don't have to call listen() for a datagram connection.
+	FILE * fp = fopen("file2.txt", "w");
+
+		// don't have to accept() or wait for a connection, just wait
+		// for datagrams...
+		
+		//printf("Waiting for a datagram...\n");
+
+		int done = 0;
+		do
+		{
+			char str[100];
+			socklen_t remoteLen = (socklen_t) sizeof(struct sockaddr_un);
+			int n = recvfrom(s, str, sizeof(str), 0, (struct sockaddr*)&remote, &remoteLen);
+			if( n < 0)
+			{
+				perror("recvfrom");
+				done = 1;
+			}
+			else if(str[0] == EOF){
+				done = 1;
+			}
+			else if(n == 0)
+				done = 1;
+			
+			else if(done != 1)
+			{
+				// recvfrom() reads bytes, and so it has no reason to
+				// put a null terminator at an end. So, we need to add
+				// a null terminator.
+				str[n] = '\0';
+				// NOTE: The newline gets sent over to us from the client.
+				//printf("%s", str);
+				fwrite(str, n, sizeof(char), fp);
+
+
+				//printf("Length of string was: %d\n", n);
+			}
+
+			
+		} while (!done);
+		fclose(fp);
+		close(s);
+		FILE * f1 = fopen("file1.txt", "r");
+		FILE * f2 = fopen("file2.txt", "r");
+		if(checksum(f1) == checksum(f2)){
+			print_time("UDS - Dgram socket end");
+		}
+		else{
+			printf("UDS - Dgram socket end : -1");
+		}
+
+	return 0;
+	}
+ 
 }

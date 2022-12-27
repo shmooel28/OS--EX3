@@ -22,9 +22,9 @@ unsigned int checksum(FILE* fp){
 
 void send_file(FILE *fp, int sockfd)
 {
-    char data[SIZE] = {0};
+    char* data = malloc(DATA_SIZE);
 
-    while(fgets(data, SIZE, fp)!=NULL)
+    while(fgets(data, DATA_SIZE, fp)!=NULL)
     {
         if(send(sockfd, data, sizeof(data), 0)== -1)
         {
@@ -41,7 +41,7 @@ void write_file(int sockfd)
     int n; 
     FILE *fp;
     char *filename = "file2.txt";
-    char buffer[SIZE];
+    char *buffer = malloc(DATA_SIZE);
 
     fp = fopen(filename, "w");
     if(fp==NULL)
@@ -51,15 +51,16 @@ void write_file(int sockfd)
     }
     while(1)
     {
-        n = recv(sockfd, buffer, SIZE, 0);
+        n = recv(sockfd, buffer, DATA_SIZE, 0);
         if(n<=0)
         {
             break;
             return;
         }
         fprintf(fp, "%s", buffer);
-        bzero(buffer, SIZE);
+        bzero(buffer, DATA_SIZE);
     }
+    free(buffer);
     return;
     
 }
@@ -82,8 +83,6 @@ int print_time(char* str){
 
 int main()
 {
-    FILE* f1 = fopen("file1.txt" , "r");
-    unsigned int chcksum = checksum(f1);
     int pid1 = fork();
     if(pid1 <0){return 1;}
     if(pid1 ==0){
@@ -182,11 +181,12 @@ int main()
         wait(NULL);
 
         FILE* f2 = fopen("file2.txt", "r");
-        if( chcksum == checksum(f2)){
+        FILE* f1 = fopen("file1.txt", "r");
+        if( checksum(f1) == checksum(f2)){
             print_time("TCP/IPv4 Socket end");
         }
         else{
-            printf("TCP/IPv4 Socket end: -1 ");
+            printf("TCP/IPv4 Socket end: -1 \n");
         }
 
 

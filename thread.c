@@ -42,7 +42,6 @@ void* readFile(void* arg){
     FILE* f1 = fopen("file1.txt", "r");
     char * str = (char *)arg;
     fgets(str, DATA_SIZE, f1);
-    printf("This func will read the data\n");
     fclose(f1);
 
 }
@@ -51,7 +50,6 @@ void* writeFile(void* arg){
     char * str = (char *)arg;
     FILE* f2 = fopen("file2.txt", "w");
     fwrite(str, DATA_SIZE, sizeof(char), f2);
-    printf("This func will write the data\n");
     fclose(f2);
 }
 

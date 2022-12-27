@@ -40,12 +40,11 @@ int main(){
         perror("pipe fail");
     }
 
-    FILE * f1 = fopen("file1.txt", "r");
-    unsigned int  chksm = checksum(f1);
-    f1 = fopen("file1.txt", "r");
+
+
     int pid1 = fork();
     if(pid1 == 0){
-
+        FILE * f1 = fopen("file1.txt", "r");
         char* str = (char *) malloc(DATA_SIZE * sizeof(char));
         print_time("PIPE start time");
 
@@ -69,13 +68,13 @@ int main(){
         char* _str = (char *) malloc(DATA_SIZE);
         read(fd[0], _str, DATA_SIZE);
         fwrite(_str, DATA_SIZE, sizeof(char), f2);
-        if(checksum(f2) == chksm){
+        FILE * f1 = fopen("file1.txt", "r");
+        if(checksum(f2) == checksum(f1)){
             print_time("PIPE end time");
         }
         else{
             printf("PIPE end time: -1 ");
         }
-        fclose(f1);
         free(_str);
         close(fd[0]);
         return 0;
