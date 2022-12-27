@@ -47,7 +47,7 @@ int main()
     int pid1 = fork();
     if(pid1 <0){return 1;}
     if(pid1 ==0){
-		sleep(0.005);
+	sleep(2);
 		struct sockaddr_un remote;
 
 	// Create a socket - the only information is the type of socket we
@@ -86,7 +86,6 @@ int main()
 	// Print a prompt, read a line of text that the user types in.
 	char str[100];
 	FILE* fp = fopen("file1.txt", "r");
-	print_time("UDS - Dgram socket start");
 	while(fgets(str, 100, fp))
 	{
 		if (sendto(s, str, strlen(str), 0,
@@ -96,31 +95,21 @@ int main()
 			perror("sendto");
 			exit(EXIT_FAILURE);
 		}
+		//printf("%s", str);
 		//printf("sent %zu bytes\n", strlen(str));
 
-		if(feof(fp)){
-			str[0] = EOF;
-			if (sendto(s, str, 1, 0,
-				   (struct sockaddr*) (&remote),
-				   (socklen_t) sizeof(struct sockaddr_un)) == -1)
-				   	{
-						perror("sendto");
-						exit(EXIT_FAILURE);
-					}
-
-			break;
-		}
-
 	}
-	fclose(fp);
 
 	close(s);
 
 	return EXIT_SUCCESS;
 
 	}
+	
+	
 	else{
-	struct sockaddr_un remote;
+	
+		struct sockaddr_un remote;
 
 	/*
 	  A call to socket() with the proper arguments creates the Unix
@@ -170,51 +159,52 @@ int main()
 #endif
 
 	// Don't have to call listen() for a datagram connection.
+	print_time("UDS - Dgram socket start");
+	int done = 0;
 	FILE * fp = fopen("file2.txt", "w");
-
 		// don't have to accept() or wait for a connection, just wait
 		// for datagrams...
 		
 		//printf("Waiting for a datagram...\n");
 
-		int done = 0;
+
 		do
 		{
-			char str[100];
+			char str[101];
 			socklen_t remoteLen = (socklen_t) sizeof(struct sockaddr_un);
-			int n = recvfrom(s, str, sizeof(str), 0, (struct sockaddr*)&remote, &remoteLen);
+			int n = recvfrom(s, str, 100, 0, (struct sockaddr*)&remote, &remoteLen);
 			if( n < 0)
 			{
 				perror("recvfrom");
 				done = 1;
 			}
-			else if(str[0] == EOF){
-				done = 1;
-			}
 			else if(n == 0)
 				done = 1;
-			
-			else if(done != 1)
+			else
 			{
 				// recvfrom() reads bytes, and so it has no reason to
 				// put a null terminator at an end. So, we need to add
 				// a null terminator.
 				str[n] = '\0';
 				// NOTE: The newline gets sent over to us from the client.
+				fwrite(str, strlen(str), sizeof(char), fp);
 				//printf("%s", str);
-				fwrite(str, n, sizeof(char), fp);
-
-
-				//printf("Length of string was: %d\n", n);
+				//printf("\nLength of string was: %zu\n", strlen(str));
 			}
-
+			if(n < 99){
+				break;
+			}
 			
 		} while (!done);
-		fclose(fp);
+
 		close(s);
+
+	fclose(fp);
+
+	wait(NULL);
 		FILE * f1 = fopen("file1.txt", "r");
 		FILE * f2 = fopen("file2.txt", "r");
-		if(checksum(f1) == checksum(f2)){
+		if(checksum(f2) == checksum(f1)){
 			print_time("UDS - Dgram socket end");
 		}
 		else{
@@ -222,6 +212,7 @@ int main()
 		}
 
 	return 0;
+	
 	}
  
 }
